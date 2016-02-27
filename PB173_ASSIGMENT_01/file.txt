@@ -1,2 +1,1 @@
-Hello World!
-Cau svet!
+Ako sa mas ?'''
