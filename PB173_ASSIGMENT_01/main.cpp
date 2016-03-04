@@ -17,134 +17,148 @@
 #include <ctime>
 #include <string.h>
 #include <linux/random.h>
+#include <stdio.h>
 
 using namespace std;
-unsigned char en_iv[16]; 
-unsigned char dec_iv[16];
 
+class EncryptedCom{
+    
+    unsigned char iv[16];
+    unsigned char key[16];
 
-int input_length;
-unsigned char pad;
+public:
+    EncryptedCom() { generate_key_iv(); }
+    int read_file(const char*, unsigned char**) const;
+    bool encryption(unsigned char*&, unsigned char*&, int) const;
+    void create_hash(unsigned char*&, unsigned char[64], int) const;
+    bool decryption(unsigned char*&, unsigned char*&, int) const;
+    void write_file(const char*, unsigned char*&) const;
+private:
+    void generate_key_iv();
+    int padding(unsigned char*&, int) const;
+};
 
-unsigned char key[16];
-
-void read_file(char* path, unsigned char**file_content){
+int EncryptedCom::read_file(const char* path, unsigned char** file_content) const{
     ifstream file;
     file.open(path);
     if(!file.is_open()){
         cout << "Cannot open the file" << endl;
-        exit(-1);
+        return -1;
     }
-    string tmp;
-    char c;
+    file.seekg(0, ios::end);
+    int input_length = file.tellg();
+    *file_content = new unsigned char [input_length + 16 * sizeof(unsigned char)];
+    file.seekg(0, ios::beg);
+    file.read((char*)*file_content, input_length);
     
-    while(file.get(c)){
-        tmp += c;
-    }
-    cout << tmp << endl;
-    if(input_length == 0){
-        input_length = tmp.length();
-        if(input_length % 16){
-            pad = 16 - (input_length % 16);
-        }
-    }
-    *file_content = new unsigned char[input_length + pad];
-    memcpy(*file_content, tmp.c_str(), input_length);
+    return input_length;
 }    
 
-void create_hash(unsigned char *file_content, unsigned char* sha_result){
-    mbedtls_sha512(file_content, input_length, sha_result, 0);   
-    cout << sha_result << endl;
+void EncryptedCom::create_hash(unsigned char* &content, unsigned char sha_result[64], int length) const{
+    mbedtls_sha512(content, length, sha_result, 0);   
 }
 
-void generate_key(){
+void EncryptedCom::generate_key_iv(){
     srand((unsigned)time(0)); 
     for(int i = 0; i < 16; i++){
-        key[i] = (rand()%256); 
+        key[i] = (rand()%256);
     }
     for(int i = 0; i < 16; i++)
-        en_iv[i] = dec_iv [i] = (rand()%256);
+        iv[i] = (rand()%256);
 }
 
-void padding(unsigned char* file_content){
+int EncryptedCom::padding(unsigned char* &content, int length) const{
+    int pad = 0;
+    if (length % 16 == 0)
+        pad = 16;
+    else
+        pad = 16 - (length % 16);
+    
     for(int i = 0; i < pad; i++){
-        file_content[input_length + i] = pad;
-        cout << input_length + i << "  " <<(int) file_content[input_length + i] << endl;
+        content[length + i] = pad;
+    }
+    return length + pad;
+}
+
+bool EncryptedCom::encryption(unsigned char* &content, unsigned char* &output, int length) const{
+    mbedtls_aes_context aes;
+    
+    if (length <= 0){
+        cout << "Encryption err: length is not valid" << endl;
+        return false;
     }
     
-}
-
-void encryption(unsigned char* file_content, unsigned char* en_output){
-    mbedtls_aes_context aes;
-    generate_key();
+    int new_size = padding(content, length);
     if (mbedtls_aes_setkey_enc(&aes, key, 128)){
-        cout << "setkey_enc error" << endl;
-        delete[] file_content;
-        delete[] en_output;
-        exit(-1);
+        cout << "Encryption err: setkey_enc error" << endl;
+        return false;
     }
-    padding(file_content);
-    for(int i = 0; i < input_length + pad; i++)
-                cout << "TU som " << (int)file_content[i] << endl;
-    if (mbedtls_aes_crypt_cbc(&aes, MBEDTLS_AES_ENCRYPT, input_length + pad, en_iv, file_content, en_output)){
-        cout << "aes_crypt error" << endl;
-        delete[] file_content;
-        delete[] en_output;
-        exit(-1);
+     
+    unsigned char en_iv[16];
+    memcpy(en_iv, iv, sizeof(unsigned char) * 16);
+    if (mbedtls_aes_crypt_cbc(&aes, MBEDTLS_AES_ENCRYPT, new_size, en_iv, content, output)){
+        cout << "Encryption err: aes_crypt error" << endl;
+        return false;
     }
+    return true;
 }
 
-void write_file(unsigned char* en_output){
+void EncryptedCom::write_file(const char* path, unsigned char* &content) const{
     ofstream file;
-    file.open("encrypt.txt", ios::out);
-    file << en_output;
-   
+    file.open(path, ios::out);
+    file << content;
 }
 
-void decryption(unsigned char **file_content, unsigned char *en_output){
+bool EncryptedCom::decryption(unsigned char* &content, unsigned char* &output, int length) const{
     mbedtls_aes_context aes;
-    read_file("encrypt.txt", file_content);
-    mbedtls_aes_init( &aes );
-    if(mbedtls_aes_setkey_dec(&aes, key, 128)){
-        cout << "setkey_dec error" << endl;
-        delete[] file_content;
-        delete[] en_output;
-        exit(-1);
-    };
-    if(mbedtls_aes_crypt_cbc(&aes, MBEDTLS_AES_DECRYPT, input_length + pad, dec_iv, *file_content, en_output)){
-        cout << "aes_decrypt error" << endl;
-        delete[] file_content;
-        delete[] en_output;
-        exit(-1);
+    if (length < 0 || length % 16){
+        cout << "Decryption err: length is not valid" << endl;
+        return false;
     }
-    //cout << "AHOJ" << *file_content << endl;
-    cout << (int)pad << endl;
-    cout << input_length << endl;
-    cout << en_output << endl;
+    if (mbedtls_aes_setkey_dec(&aes, key, 128)){
+        cout << "Decryption err: setkey_dec error" << endl;
+        return false;
+    }
+    unsigned char dec_iv[16];
+    memcpy(dec_iv, iv, sizeof(unsigned char) * 16);
+    if (mbedtls_aes_crypt_cbc(&aes, MBEDTLS_AES_DECRYPT, length, dec_iv, content, output)){
+        cout << "Decryption err: aes_decrypt error" << endl;
+        return false;
+    }
+    int pad = output[length - 1];
+    output[length - pad] = '\0';
 }
 
 int main(int argc, char** argv){
 
-    if(argc < 2){
-        cout << "Cannot read the file." << endl;
-        return -1;
+    unsigned char sha_result1[64];
+    unsigned char sha_result2[64];
+    EncryptedCom en;
+    unsigned char* file_content;
+    int size;
+    if((size = en.read_file("file.txt", &file_content)) < 0){
+        return 1;
+    }    
+    unsigned char* en_output = new unsigned char[size + 16];
+    
+    en.create_hash(file_content, sha_result1, size);
+    
+    en.encryption(file_content, en_output, size);
+    
+    en.write_file("encryption.txt",en_output);
+    delete[] en_output;
+    delete[] file_content;
+    
+    if((size = en.read_file("encryption.txt", &file_content)) <= 0){
+        return 1;
     }
     
-    unsigned char* file_content;
-    unsigned char* en_output;
-    unsigned char sha_result1[64] = {'\0'};
-    memset(sha_result1, '\0', sizeof(unsigned char) * 64);
-    unsigned char sha_result2[64] = {'\0'};
-    memset(sha_result2, '\0', sizeof(unsigned char) * 64);
+    en_output = new unsigned char[size];
     
-    read_file(argv[1], &file_content);
-    en_output = new unsigned char[input_length + pad];
-    create_hash(file_content, sha_result1);
-    encryption(file_content, en_output);
-    write_file(en_output);
-    delete[] file_content;
-    decryption(&file_content, en_output);
-    create_hash(en_output, sha_result2);
+    en.decryption(file_content, en_output, size);
+    cout << "File: " << file_content << endl;
+    en.create_hash(en_output, sha_result2, strlen((const char*)en_output));
+    
     if(memcmp(sha_result1, sha_result2, 64 * sizeof(unsigned char)))
         cout << "Hashes are different" << endl;
     else
