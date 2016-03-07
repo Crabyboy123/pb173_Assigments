@@ -1,4 +1,4 @@
-visCI build settings file
+#TravisCI build settings file
 # For more info, see http://docs.travis-ci.com/user/getting-started/
 # To validate your .travis.yml, go to http://lint.travis-ci.org/
 
