@@ -11,4 +11,4 @@ compiler:
   - clang
 
 # script to run after build (run tests, etc.)
-script: cd Cryptography/lib/mbedtls && make clean && make && cd ../.. && make tests launch-tests
+script: cd Crypto/lib/mbedtls-2.2.1 && make clean && make && cd ../.. && make tests run-tests
