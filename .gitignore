@@ -26,3 +26,5 @@
 *.exe
 *.out
 *.app
+/Crypto/src/dist/
+/Crypto/src/build/
