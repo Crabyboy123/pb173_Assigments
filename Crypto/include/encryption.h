@@ -14,13 +14,14 @@
 #ifndef ENCRYPTION_H
 #define ENCRYPTION_H
 
+#include <iostream>
 class EncryptedCom{
     
     unsigned char iv[16];
 
 public:
     EncryptedCom() { generate_iv(); }
-    int read_file(const char*, unsigned char**) const;
+    int read_file(std::string, unsigned char**) const;
     bool encryption(unsigned char*&, unsigned char*&, int, unsigned char *) const;
     void create_hash(unsigned char*&, unsigned char[64], int) const;
     bool decryption(unsigned char*&, unsigned char*&, int, unsigned char *) const;

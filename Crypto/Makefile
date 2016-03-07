@@ -7,7 +7,7 @@ TARGET := bin/encrypt
  
 SRCEXT := cpp
 SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
-SOURCES_TEST=test/testing.cpp
+SOURCES_TEST=test/testing.cpp src/encryption.cpp
 OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o))
 LIB := -L lib/mbedtls-2.2.1/library -lmbedcrypto -lmbedtls -lmbedx509 
 INC := -I include -I lib/mbedtls-2.2.1/include/mbedtls
@@ -25,7 +25,7 @@ clean:
 tests:
 	@mkdir -p $(BUILDDIR)
 	@mkdir -p bin
-	$(CC) $(CFLAGS) src/encryption.cpp $(SOURCES_TEST) $(INC) $(LIB) -o tests
+	$(CC) $(CFLAGS) $(SOURCES_TEST) $(INC) $(LIB) -o bin/tests
 
 run-tests: tests
 	./bin/tests

@@ -35,6 +35,28 @@ TEST_CASE("Encryption/Decryption") {
     memcpy(s, "012345678901234", sizeof(char) * 15);
     CHECK(en.encryption(s, r, 15, nullptr) == false);
     CHECK(en.encryption(s, r, 15, key) == true);
+    CHECK(en.decryption(r, s, 16, key) == true);
+    CHECK(memcmp(s, "012345678901234", sizeof(char) * 15) == 0);
+    key[0] = key[0] + 1;
+    en.decryption(r, s, 16, key);
+    CHECK(memcmp(s, "012345678901234", sizeof(char) * 15) != 0);
+    CHECK(en.decryption(r, s, 16, nullptr) == false);
+    CHECK(en.decryption(r, s, 15, nullptr) == false);
     delete [] s;
 }
            
+TEST_CASE("Hash"){
+    EncryptedCom en;
+    unsigned char hash1[64];
+    unsigned char hash2[64];
+
+    unsigned char *s = new unsigned char[15];
+    memcpy(s, "012345678901234", sizeof(char) * 15);
+    en.create_hash(s, hash1, 15);
+    memcpy(s, "012345678901234", sizeof(char) * 15);
+    en.create_hash(s, hash2, 15);
+    CHECK(memcmp(hash1, hash2, 64 * sizeof(char)) == 0);
+    memcpy(s, "012345678901235", sizeof(char) * 15);
+    en.create_hash(s, hash2, 15);
+    CHECK(memcmp(hash1, hash2, 64 * sizeof(char)) != 0);
+}
