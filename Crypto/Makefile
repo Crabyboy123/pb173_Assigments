@@ -1,5 +1,5 @@
-CC := g++
-CFLAGS := -g -Wall -Wextra -std=c++11
+CC := g++-4.8
+CFLAGS := -std=c++11 -g -Wall -Wextra
 
 SRCDIR := src
 BUILDDIR := build
